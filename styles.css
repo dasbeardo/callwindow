@@ -12,7 +12,7 @@
     margin: 0;
     background: var(--background);
     font-family: 'Inter', Arial, sans-serif;
-    overflow-x: hidden; /* Prevent horizontal scrollbars */
+    overflow-x: hidden;
   }
   
   body {
@@ -26,11 +26,11 @@
     background: var(--card);
     box-shadow: var(--shadow);
     border-radius: var(--radius);
-    padding: 1.3em 0.8em;         /* Reduced horizontal padding */
+    padding: 2em 2.5em;           /* Default padding for wide screens */
     margin-top: 6vh;
     width: 100%;
-    max-width: 320px;             /* Narrower than before */
-    min-width: 180px;             /* Allows much smaller windows */
+    max-width: 410px;             /* Original max width */
+    min-width: 0;                 /* Allow it to shrink as needed */
     box-sizing: border-box;
   }
   
@@ -63,6 +63,7 @@
     border: 1.5px solid #b6bdd5;
     outline: none;
     transition: border 0.15s;
+    min-width: 0; /* allow input to shrink with container */
   }
   
   input[type="tel"]:focus, input[type="text"]:focus, input[type="number"]:focus {
@@ -80,6 +81,7 @@
     font-weight: 600;
     cursor: pointer;
     transition: background 0.16s;
+    min-width: 0; /* allow button to shrink */
   }
   
   button:hover, button:focus {
@@ -98,14 +100,14 @@
     word-break: break-word;
     text-align: center;
     font-variant-numeric: tabular-nums;
+    min-width: 0; /* allow to shrink */
   }
   
   @media (max-width: 600px) {
     .container {
-      padding: 1.1em 0.2em;    /* Even less padding on small screens */
+      padding: 1.1em 0.2em;    /* less padding on small screens */
       margin-top: 3vh;
       max-width: 99vw;
-      min-width: 120px;
     }
     h1 {
       font-size: 1.3rem;
@@ -113,5 +115,13 @@
     #result {
       font-size: 1em;
       padding: 1em 0.1em 0.8em 0.1em;
+    }
+    input[type="tel"], input[type="text"], input[type="number"] {
+      font-size: 1em;
+      padding: 0.55em;
+    }
+    button {
+      font-size: 1em;
+      padding: 0.6em;
     }
   }
