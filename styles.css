@@ -12,6 +12,7 @@
     margin: 0;
     background: var(--background);
     font-family: 'Inter', Arial, sans-serif;
+    overflow-x: hidden; /* Prevent horizontal scrollbars */
   }
   
   body {
@@ -25,10 +26,11 @@
     background: var(--card);
     box-shadow: var(--shadow);
     border-radius: var(--radius);
-    padding: 2em 2.5em;
+    padding: 1.3em 0.8em;         /* Reduced horizontal padding */
     margin-top: 6vh;
     width: 100%;
-    max-width: 410px;
+    max-width: 320px;             /* Narrower than before */
+    min-width: 180px;             /* Allows much smaller windows */
     box-sizing: border-box;
   }
   
@@ -100,9 +102,10 @@
   
   @media (max-width: 600px) {
     .container {
-      padding: 1.3em 0.7em;
+      padding: 1.1em 0.2em;    /* Even less padding on small screens */
       margin-top: 3vh;
-      max-width: 100vw;
+      max-width: 99vw;
+      min-width: 120px;
     }
     h1 {
       font-size: 1.3rem;
