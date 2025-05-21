@@ -2,7 +2,7 @@ let areaCodes = null;
 
 async function loadAreaCodes() {
   if (!areaCodes) {
-    const resp = await fetch('us_area_codes_with_iana.json');
+    const resp = await fetch('areacodes.json');
     areaCodes = await resp.json();
   }
 }
