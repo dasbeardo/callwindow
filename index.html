@@ -112,7 +112,7 @@
     <h1>US Area Code Lookup</h1>
     <form id="lookupForm" autocomplete="off">
       <label for="areaCode">Enter a 3-digit area code:</label>
-      <input type="text" id="areaCode" maxlength="3" pattern="\d{3}" required placeholder="e.g. 415">
+      <input type="tel" id="areaCode" maxlength="3" pattern="\d{3}" inputmode="numeric" required placeholder="e.g. 415">
       <button type="submit">Lookup</button>
     </form>
     <div id="result"></div>
