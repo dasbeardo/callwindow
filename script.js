@@ -2,7 +2,7 @@ let areaCodes = null;
 
 async function loadAreaCodes() {
   if (!areaCodes) {
-    const resp = await fetch('areacodes.json');
+    const resp = await fetch('areacodes.json'); // Filename matches your JSON
     areaCodes = await resp.json();
   }
 }
