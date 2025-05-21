@@ -2,7 +2,7 @@ let areaCodes = null;
 
 async function loadAreaCodes() {
   if (!areaCodes) {
-    const resp = await fetch('areacodes.json'); // Filename matches your JSON
+    const resp = await fetch('areacodes.json'); // Make sure this matches your file!
     areaCodes = await resp.json();
   }
 }
@@ -26,19 +26,24 @@ function getCurrentTime(ianaTimeZone) {
 
 document.getElementById('lookupForm').addEventListener('submit', async function(e) {
   e.preventDefault();
-  const input = document.getElementById('areaCode').value.trim();
+  const inputElem = document.getElementById('areaCode');
+  const input = inputElem.value.trim();
   const resultDiv = document.getElementById('result');
-  
+
   if (!/^\d{3}$/.test(input)) {
     resultDiv.textContent = "Please enter exactly 3 digits.";
+    inputElem.focus();
+    inputElem.select();
     return;
   }
-  
+
   await loadAreaCodes();
   const info = findAreaCodeInfo(input);
 
   if (!info) {
     resultDiv.textContent = "Area code not found.";
+    inputElem.focus();
+    inputElem.select();
     return;
   }
 
@@ -50,4 +55,6 @@ document.getElementById('lookupForm').addEventListener('submit', async function(
     <b>Time Zone:</b> ${info.timezone}<br>
     <b>Current Time:</b> ${currentTime}
   `;
+  inputElem.focus();
+  inputElem.select();
 });
