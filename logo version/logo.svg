@@ -1,0 +1,17 @@
+<svg width="540" height="210" viewBox="0 0 540 210" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="14" y="14" width="120" height="120" rx="8" fill="none" stroke="#60b5e3" stroke-width="4"/>
+  <!-- Stylized phone handset -->
+  <path d="M58 90 Q72 112 90 98 Q98 92 91 81 Q83 68 69 75 Q54 82 58 90 Z" fill="#60b5e3"/>
+  <!-- Phone signal lines -->
+  <path d="M96 65 Q105 75 95 90" stroke="#60b5e3" stroke-width="4" fill="none"/>
+  <path d="M103 60 Q114 75 101 99" stroke="#60b5e3" stroke-width="4" fill="none"/>
+  <path d="M110 55 Q124 76 104 114" stroke="#60b5e3" stroke-width="4" fill="none"/>
+  <!-- "I" bars to the left (optional, can remove if not wanted) -->
+  <rect x="28" y="35" width="4" height="23" rx="2" fill="#60b5e3"/>
+  <rect x="36" y="41" width="4" height="15" rx="2" fill="#60b5e3"/>
+  <!-- Horizontal lines -->
+  <rect x="154" y="58" width="340" height="10" rx="2" fill="#60b5e3"/>
+  <rect x="154" y="145" width="340" height="10" rx="2" fill="#60b5e3"/>
+  <!-- "CALLWINDOW" text -->
+  <text x="170" y="128" font-family="Montserrat, Arial, sans-serif" font-size="64" fill="#60b5e3" letter-spacing="2">CALLWINDOW</text>
+</svg>
