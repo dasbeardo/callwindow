@@ -12,18 +12,14 @@
   <div class="container">
     <h1>CallWindow</h1>
     <form id="lookupForm" autocomplete="off">
-  <label for="areaCode">Area Code:</label>
-  <input
-    id="areaCode"
-    type="tel"
-    pattern="\d{3}"
-    inputmode="numeric"
-    maxlength="3"
-    enterkeyhint="search"
-    autocomplete="off"
-    required
-    placeholder="e.g. 202"
-  >
+   <input
+        type="tel"
+        id="areaCode"
+        maxlength="3"
+        pattern="\d{3}"
+        inputmode="numeric"
+        required
+        placeholder="example: 202">
   <button type="submit">Look Up</button>
 </form>
     <div id="result"></div>
