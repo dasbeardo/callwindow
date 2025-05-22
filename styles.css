@@ -81,7 +81,11 @@
   }
   
   button:hover, button:focus {
+<<<<<<< Updated upstream
     background: #1747b0;
+=======
+    background: #311d65;
+>>>>>>> Stashed changes
   }
   
   #result {
@@ -111,4 +115,21 @@
       font-size: 1em;
       padding: 1em 0.1em 0.8em 0.1em;
     }
+    .logo-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 0.9em;
+}
+
+.logo-img {
+  width: min(325px, 82vw);
+  height: auto;
+  display: block;
+  max-width: 100%;
+  /* Optionally: add drop-shadow or tweak below */
+  filter: drop-shadow(0 2px 16px rgba(66, 41, 130, 0.18));
+  user-select: none;
+  -webkit-user-drag: none;
+}
   }

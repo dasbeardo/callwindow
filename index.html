@@ -10,7 +10,10 @@
 </head>
 <body>
   <div class="container">
-    <h1>CallWindow</h1>
+    <div class="logo-header">
+  <img src="textlogo.svg" alt="CallWindow" class="logo-img" draggable="false">
+</div>
+</br>
     <form id="lookupForm" autocomplete="off">
    <input
         type="tel"
@@ -19,7 +22,7 @@
         pattern="\d{3}"
         inputmode="numeric"
         required
-        placeholder="example: 202">
+        placeholder="Enter area code (e.g. 202)">
   <button type="submit">Look Up</button>
 </form>
     <div id="result"></div>
