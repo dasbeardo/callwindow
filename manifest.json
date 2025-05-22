@@ -4,8 +4,8 @@
     "description": "US Area Code Lookup",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#2563eb",
-    "theme_color": "#2563eb",
+    "background_color": "#613fb4",
+    "theme_color": "#613fb4",
     "icons": [
       {
         "src": "logo.svg",
