@@ -1,5 +1,5 @@
 :root {
-    --primary: #2563eb;
+    --primary: #613fb4;
     --secondary: #e0e7ef;
     --background: #f4f6fa;
     --card: #fff;
@@ -81,7 +81,7 @@
   }
   
   button:hover, button:focus {
-    background: #1747b0;
+    background: #613fb4;
   }
   
   #result {
