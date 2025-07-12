@@ -345,449 +345,430 @@
 </div>
 
 <script>
-    class CallTimer {
-        constructor() {
-            this.sessionStartTime = null;
-            this.sessionEndTime = null;
-            this.sessionElapsed = 0;
-            
-            this.callStartTime = null;
-            this.callElapsed = 0;
-            
-            this.distractionStartTime = null;
-            this.distractionElapsed = 0;
-            
-            this.calls = [];
-            this.isSessionActive = false;
-            this.isCallActive = false;
-            this.isDistractionActive = false;
-            
-            this.intervalId = null;
-            
-            this.initializeElements();
-            this.bindEvents();
-            this.loadFromStorage();
-            this.startUpdateLoop();
+    let sessionStartTime = null;
+    let sessionEndTime = null;
+    let callStartTime = null;
+    let distractionStartTime = null;
+    let distractionElapsed = 0;
+    let calls = [];
+    let isSessionActive = false;
+    let isCallActive = false;
+    let isDistractionActive = false;
+
+    // Get DOM elements
+    const elements = {
+        sessionSection: document.getElementById('sessionSection'),
+        sessionDisplay: document.getElementById('sessionDisplay'),
+        startSessionBtn: document.getElementById('startSessionBtn'),
+        stopSessionBtn: document.getElementById('stopSessionBtn'),
+        
+        callSection: document.getElementById('callSection'),
+        callDisplay: document.getElementById('callDisplay'),
+        startCallBtn: document.getElementById('startCallBtn'),
+        endCallBtn: document.getElementById('endCallBtn'),
+        callLabel: document.getElementById('callLabel'),
+        callNotes: document.getElementById('callNotes'),
+        
+        distractionSection: document.getElementById('distractionSection'),
+        distractionDisplay: document.getElementById('distractionDisplay'),
+        startDistractionBtn: document.getElementById('startDistractionBtn'),
+        endDistractionBtn: document.getElementById('endDistractionBtn'),
+        
+        callLog: document.getElementById('callLog'),
+        callEntries: document.getElementById('callEntries'),
+        
+        sessionSummary: document.getElementById('sessionSummary'),
+        totalSessionTime: document.getElementById('totalSessionTime'),
+        totalCallTime: document.getElementById('totalCallTime'),
+        totalDistractionTime: document.getElementById('totalDistractionTime'),
+        productivePercentage: document.getElementById('productivePercentage'),
+        
+        exportCsvBtn: document.getElementById('exportCsvBtn'),
+        clearSessionBtn: document.getElementById('clearSessionBtn')
+    };
+
+    // Utility function to format time
+    function formatTime(ms) {
+        const totalSeconds = Math.floor(ms / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    // Session functions
+    function startSession() {
+        sessionStartTime = Date.now();
+        isSessionActive = true;
+        
+        elements.startSessionBtn.disabled = true;
+        elements.stopSessionBtn.disabled = false;
+        elements.startCallBtn.disabled = false;
+        elements.startDistractionBtn.disabled = false;
+        elements.callLabel.disabled = false;
+        elements.callNotes.disabled = false;
+        
+        elements.sessionSection.classList.add('active');
+        elements.callLog.style.display = 'block';
+        
+        saveToStorage();
+    }
+
+    function stopSession() {
+        sessionEndTime = Date.now();
+        isSessionActive = false;
+        
+        // Stop any active timers
+        if (isCallActive) endCall();
+        if (isDistractionActive) endDistraction();
+        
+        elements.startSessionBtn.disabled = false;
+        elements.stopSessionBtn.disabled = true;
+        elements.startCallBtn.disabled = true;
+        elements.endCallBtn.disabled = true;
+        elements.startDistractionBtn.disabled = true;
+        elements.endDistractionBtn.disabled = true;
+        elements.callLabel.disabled = true;
+        elements.callNotes.disabled = true;
+        
+        elements.sessionSection.classList.remove('active');
+        elements.callSection.classList.remove('active');
+        elements.distractionSection.classList.remove('active');
+        
+        showSummary();
+        saveToStorage();
+    }
+
+    // Call functions
+    function startCall() {
+        callStartTime = Date.now();
+        isCallActive = true;
+        
+        elements.startCallBtn.disabled = true;
+        elements.endCallBtn.disabled = false;
+        elements.callSection.classList.add('active');
+        
+        saveToStorage();
+    }
+
+    function endCall() {
+        if (!isCallActive) return;
+        
+        const callEndTime = Date.now();
+        const callDuration = callEndTime - callStartTime;
+        
+        const call = {
+            startTime: new Date(callStartTime),
+            endTime: new Date(callEndTime),
+            duration: callDuration,
+            label: elements.callLabel.value.trim(),
+            notes: elements.callNotes.value.trim()
+        };
+        
+        calls.push(call);
+        isCallActive = false;
+        
+        elements.startCallBtn.disabled = false;
+        elements.endCallBtn.disabled = true;
+        elements.callSection.classList.remove('active');
+        elements.callDisplay.classList.remove('warning');
+        
+        // Clear inputs
+        elements.callLabel.value = '';
+        elements.callNotes.value = '';
+        
+        updateCallLog();
+        saveToStorage();
+    }
+
+    // Distraction functions
+    function startDistraction() {
+        distractionStartTime = Date.now();
+        isDistractionActive = true;
+        
+        elements.startDistractionBtn.disabled = true;
+        elements.endDistractionBtn.disabled = false;
+        elements.distractionSection.classList.add('active');
+        
+        saveToStorage();
+    }
+
+    function endDistraction() {
+        if (!isDistractionActive) return;
+        
+        const distractionEndTime = Date.now();
+        const distractionDuration = distractionEndTime - distractionStartTime;
+        distractionElapsed += distractionDuration;
+        
+        isDistractionActive = false;
+        
+        elements.startDistractionBtn.disabled = false;
+        elements.endDistractionBtn.disabled = true;
+        elements.distractionSection.classList.remove('active');
+        
+        saveToStorage();
+    }
+
+    // Update displays
+    function updateDisplays() {
+        const now = Date.now();
+        
+        // Update session timer
+        if (isSessionActive) {
+            const sessionTime = now - sessionStartTime;
+            elements.sessionDisplay.textContent = formatTime(sessionTime);
         }
         
-        initializeElements() {
-            this.elements = {
-                sessionSection: document.getElementById('sessionSection'),
-                sessionDisplay: document.getElementById('sessionDisplay'),
-                startSessionBtn: document.getElementById('startSessionBtn'),
-                stopSessionBtn: document.getElementById('stopSessionBtn'),
-                
-                callSection: document.getElementById('callSection'),
-                callDisplay: document.getElementById('callDisplay'),
-                startCallBtn: document.getElementById('startCallBtn'),
-                endCallBtn: document.getElementById('endCallBtn'),
-                callLabel: document.getElementById('callLabel'),
-                callNotes: document.getElementById('callNotes'),
-                
-                distractionSection: document.getElementById('distractionSection'),
-                distractionDisplay: document.getElementById('distractionDisplay'),
-                startDistractionBtn: document.getElementById('startDistractionBtn'),
-                endDistractionBtn: document.getElementById('endDistractionBtn'),
-                
-                callLog: document.getElementById('callLog'),
-                callEntries: document.getElementById('callEntries'),
-                
-                sessionSummary: document.getElementById('sessionSummary'),
-                totalSessionTime: document.getElementById('totalSessionTime'),
-                totalCallTime: document.getElementById('totalCallTime'),
-                totalDistractionTime: document.getElementById('totalDistractionTime'),
-                productivePercentage: document.getElementById('productivePercentage'),
-                
-                exportCsvBtn: document.getElementById('exportCsvBtn'),
-                clearSessionBtn: document.getElementById('clearSessionBtn')
-            };
+        // Update call timer
+        if (isCallActive) {
+            const callTime = now - callStartTime;
+            elements.callDisplay.textContent = formatTime(callTime);
+            
+            // Show warning after 5 minutes
+            if (callTime >= 5 * 60 * 1000) {
+                elements.callDisplay.classList.add('warning');
+            }
+        } else {
+            elements.callDisplay.textContent = '00:00:00';
         }
         
-        bindEvents() {
-            this.elements.startSessionBtn.addEventListener('click', () => this.startSession());
-            this.elements.stopSessionBtn.addEventListener('click', () => this.stopSession());
+        // Update distraction timer
+        if (isDistractionActive) {
+            const currentDistraction = now - distractionStartTime;
+            const totalDistraction = distractionElapsed + currentDistraction;
+            elements.distractionDisplay.textContent = formatTime(totalDistraction);
+        } else {
+            elements.distractionDisplay.textContent = formatTime(distractionElapsed);
+        }
+    }
+
+    // Update call log
+    function updateCallLog() {
+        elements.callEntries.innerHTML = '';
+        
+        calls.forEach((call, index) => {
+            const entry = document.createElement('div');
+            entry.className = 'call-entry';
             
-            this.elements.startCallBtn.addEventListener('click', () => this.startCall());
-            this.elements.endCallBtn.addEventListener('click', () => this.endCall());
+            const meta = document.createElement('div');
+            meta.className = 'call-meta';
+            meta.textContent = `Call ${index + 1}: ${formatTime(call.duration)} - ${call.startTime.toLocaleTimeString()}`;
             
-            this.elements.startDistractionBtn.addEventListener('click', () => this.startDistraction());
-            this.elements.endDistractionBtn.addEventListener('click', () => this.endDistraction());
+            const details = document.createElement('div');
+            details.className = 'call-details';
+            const label = call.label ? `"${call.label}"` : 'No label';
+            const notes = call.notes ? ` - ${call.notes}` : '';
+            details.textContent = `${label}${notes}`;
             
-            this.elements.exportCsvBtn.addEventListener('click', () => this.exportCsv());
-            this.elements.clearSessionBtn.addEventListener('click', () => this.clearSession());
-            
-            // Auto-save on input
-            this.elements.callLabel.addEventListener('input', () => this.saveToStorage());
-            this.elements.callNotes.addEventListener('input', () => this.saveToStorage());
+            entry.appendChild(meta);
+            entry.appendChild(details);
+            elements.callEntries.appendChild(entry);
+        });
+    }
+
+    // Show summary
+    function showSummary() {
+        const totalSessionTime = sessionEndTime - sessionStartTime;
+        const totalCallTime = calls.reduce((sum, call) => sum + call.duration, 0);
+        const totalDistractionTime = distractionElapsed;
+        const productiveTime = totalCallTime;
+        const productivePercentage = totalSessionTime > 0 ? Math.round((productiveTime / totalSessionTime) * 100) : 0;
+        
+        elements.totalSessionTime.textContent = formatTime(totalSessionTime);
+        elements.totalCallTime.textContent = formatTime(totalCallTime);
+        elements.totalDistractionTime.textContent = formatTime(totalDistractionTime);
+        elements.productivePercentage.textContent = `${productivePercentage}%`;
+        
+        elements.sessionSummary.style.display = 'block';
+    }
+
+    // Export CSV
+    function exportCsv() {
+        if (calls.length === 0) {
+            alert('No calls to export!');
+            return;
         }
         
-        startSession() {
-            this.sessionStartTime = Date.now();
-            this.isSessionActive = true;
-            this.sessionElapsed = 0;
-            
-            this.elements.startSessionBtn.disabled = true;
-            this.elements.stopSessionBtn.disabled = false;
-            this.elements.startCallBtn.disabled = false;
-            this.elements.startDistractionBtn.disabled = false;
-            this.elements.callLabel.disabled = false;
-            this.elements.callNotes.disabled = false;
-            
-            this.elements.sessionSection.classList.add('active');
-            this.elements.callLog.style.display = 'block';
-            
-            this.saveToStorage();
-        }
+        const headers = ['Session Date', 'Call Number', 'Start Time', 'End Time', 'Duration (minutes)', 'Label', 'Notes'];
+        const sessionDate = new Date(sessionStartTime).toLocaleDateString();
         
-        stopSession() {
-            this.sessionEndTime = Date.now();
-            this.isSessionActive = false;
-            
-            // Stop any active timers
-            if (this.isCallActive) this.endCall();
-            if (this.isDistractionActive) this.endDistraction();
-            
-            this.elements.startSessionBtn.disabled = false;
-            this.elements.stopSessionBtn.disabled = true;
-            this.elements.startCallBtn.disabled = true;
-            this.elements.endCallBtn.disabled = true;
-            this.elements.startDistractionBtn.disabled = true;
-            this.elements.endDistractionBtn.disabled = true;
-            this.elements.callLabel.disabled = true;
-            this.elements.callNotes.disabled = true;
-            
-            this.elements.sessionSection.classList.remove('active');
-            this.elements.callSection.classList.remove('active');
-            this.elements.distractionSection.classList.remove('active');
-            
-            this.showSummary();
-            this.saveToStorage();
-        }
+        const rows = calls.map((call, index) => [
+            sessionDate,
+            index + 1,
+            call.startTime.toLocaleTimeString(),
+            call.endTime.toLocaleTimeString(),
+            Math.round(call.duration / 60000 * 100) / 100,
+            call.label || '',
+            call.notes || ''
+        ]);
         
-        startCall() {
-            this.callStartTime = Date.now();
-            this.isCallActive = true;
-            this.callElapsed = 0;
-            
-            this.elements.startCallBtn.disabled = true;
-            this.elements.endCallBtn.disabled = false;
-            this.elements.callSection.classList.add('active');
-            
-            this.saveToStorage();
-        }
+        // Add summary row
+        const totalSessionTime = sessionEndTime - sessionStartTime;
+        const totalCallTime = calls.reduce((sum, call) => sum + call.duration, 0);
+        const totalDistractionTime = distractionElapsed;
+        const productivePercentage = totalSessionTime > 0 ? Math.round((totalCallTime / totalSessionTime) * 100) : 0;
         
-        endCall() {
-            if (!this.isCallActive) return;
-            
-            const callEndTime = Date.now();
-            const callDuration = callEndTime - this.callStartTime;
-            
-            const call = {
-                startTime: new Date(this.callStartTime),
-                endTime: new Date(callEndTime),
-                duration: callDuration,
-                label: this.elements.callLabel.value.trim(),
-                notes: this.elements.callNotes.value.trim()
-            };
-            
-            this.calls.push(call);
-            this.isCallActive = false;
-            this.callElapsed = 0;
-            
-            this.elements.startCallBtn.disabled = false;
-            this.elements.endCallBtn.disabled = true;
-            this.elements.callSection.classList.remove('active');
-            this.elements.callDisplay.classList.remove('warning');
-            
-            // Clear inputs
-            this.elements.callLabel.value = '';
-            this.elements.callNotes.value = '';
-            
-            this.updateCallLog();
-            this.saveToStorage();
-        }
+        rows.push([]);
+        rows.push(['SUMMARY', '', '', '', '', '', '']);
+        rows.push(['Total Session Time', '', '', '', Math.round(totalSessionTime / 60000 * 100) / 100, '', '']);
+        rows.push(['Total Call Time', '', '', '', Math.round(totalCallTime / 60000 * 100) / 100, '', '']);
+        rows.push(['Total Distraction Time', '', '', '', Math.round(totalDistractionTime / 60000 * 100) / 100, '', '']);
+        rows.push(['Productive Percentage', '', '', '', `${productivePercentage}%`, '', '']);
         
-        startDistraction() {
-            this.distractionStartTime = Date.now();
-            this.isDistractionActive = true;
-            
-            this.elements.startDistractionBtn.disabled = true;
-            this.elements.endDistractionBtn.disabled = false;
-            this.elements.distractionSection.classList.add('active');
-            
-            this.saveToStorage();
-        }
+        const csvContent = [headers, ...rows]
+            .map(row => row.map(field => `"${field}"`).join(','))
+            .join('\n');
         
-        endDistraction() {
-            if (!this.isDistractionActive) return;
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `call-session-${sessionDate.replace(/\//g, '-')}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // Clear session
+    function clearSession() {
+        if (confirm('Are you sure you want to clear this session? This cannot be undone.')) {
+            sessionStartTime = null;
+            sessionEndTime = null;
+            callStartTime = null;
+            distractionStartTime = null;
+            distractionElapsed = 0;
+            calls = [];
+            isSessionActive = false;
+            isCallActive = false;
+            isDistractionActive = false;
             
-            const distractionEndTime = Date.now();
-            const distractionDuration = distractionEndTime - this.distractionStartTime;
-            this.distractionElapsed += distractionDuration;
+            elements.sessionDisplay.textContent = '00:00:00';
+            elements.callDisplay.textContent = '00:00:00';
+            elements.distractionDisplay.textContent = '00:00:00';
+            elements.callLabel.value = '';
+            elements.callNotes.value = '';
             
-            this.isDistractionActive = false;
+            elements.startSessionBtn.disabled = false;
+            elements.stopSessionBtn.disabled = true;
+            elements.startCallBtn.disabled = true;
+            elements.endCallBtn.disabled = true;
+            elements.startDistractionBtn.disabled = true;
+            elements.endDistractionBtn.disabled = true;
+            elements.callLabel.disabled = true;
+            elements.callNotes.disabled = true;
             
-            this.elements.startDistractionBtn.disabled = false;
-            this.elements.endDistractionBtn.disabled = true;
-            this.elements.distractionSection.classList.remove('active');
+            elements.sessionSection.classList.remove('active');
+            elements.callSection.classList.remove('active');
+            elements.distractionSection.classList.remove('active');
+            elements.callDisplay.classList.remove('warning');
             
-            this.saveToStorage();
+            elements.callLog.style.display = 'none';
+            elements.sessionSummary.style.display = 'none';
+            
+            localStorage.removeItem('callTimerData');
         }
+    }
+
+    // Storage functions
+    function saveToStorage() {
+        const data = {
+            sessionStartTime,
+            sessionEndTime,
+            callStartTime,
+            distractionStartTime,
+            distractionElapsed,
+            calls,
+            isSessionActive,
+            isCallActive,
+            isDistractionActive,
+            callLabel: elements.callLabel.value,
+            callNotes: elements.callNotes.value
+        };
         
-        startUpdateLoop() {
-            this.intervalId = setInterval(() => {
-                this.updateDisplays();
-            }, 1000);
-        }
+        localStorage.setItem('callTimerData', JSON.stringify(data));
+    }
+
+    function loadFromStorage() {
+        const stored = localStorage.getItem('callTimerData');
+        if (!stored) return;
         
-        updateDisplays() {
-            const now = Date.now();
+        try {
+            const data = JSON.parse(stored);
             
-            // Update session timer
-            if (this.isSessionActive) {
-                const sessionTime = now - this.sessionStartTime;
-                this.elements.sessionDisplay.textContent = this.formatTime(sessionTime);
+            sessionStartTime = data.sessionStartTime;
+            sessionEndTime = data.sessionEndTime;
+            callStartTime = data.callStartTime;
+            distractionStartTime = data.distractionStartTime;
+            distractionElapsed = data.distractionElapsed || 0;
+            calls = data.calls || [];
+            isSessionActive = data.isSessionActive || false;
+            isCallActive = data.isCallActive || false;
+            isDistractionActive = data.isDistractionActive || false;
+            
+            // Restore UI state
+            if (isSessionActive) {
+                elements.startSessionBtn.disabled = true;
+                elements.stopSessionBtn.disabled = false;
+                elements.startCallBtn.disabled = false;
+                elements.startDistractionBtn.disabled = false;
+                elements.callLabel.disabled = false;
+                elements.callNotes.disabled = false;
+                elements.sessionSection.classList.add('active');
+                elements.callLog.style.display = 'block';
             }
             
-            // Update call timer
-            if (this.isCallActive) {
-                const callTime = now - this.callStartTime;
-                this.elements.callDisplay.textContent = this.formatTime(callTime);
-                
-                // Show warning after 5 minutes
-                if (callTime >= 5 * 60 * 1000) {
-                    this.elements.callDisplay.classList.add('warning');
-                }
-            } else {
-                this.elements.callDisplay.textContent = this.formatTime(this.callElapsed);
+            if (isCallActive) {
+                elements.startCallBtn.disabled = true;
+                elements.endCallBtn.disabled = false;
+                elements.callSection.classList.add('active');
             }
             
-            // Update distraction timer
-            if (this.isDistractionActive) {
-                const currentDistraction = now - this.distractionStartTime;
-                const totalDistraction = this.distractionElapsed + currentDistraction;
-                this.elements.distractionDisplay.textContent = this.formatTime(totalDistraction);
-            } else {
-                this.elements.distractionDisplay.textContent = this.formatTime(this.distractionElapsed);
-            }
-        }
-        
-        formatTime(ms) {
-            const totalSeconds = Math.floor(ms / 1000);
-            const hours = Math.floor(totalSeconds / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
-            
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        }
-        
-        updateCallLog() {
-            this.elements.callEntries.innerHTML = '';
-            
-            this.calls.forEach((call, index) => {
-                const entry = document.createElement('div');
-                entry.className = 'call-entry';
-                
-                const meta = document.createElement('div');
-                meta.className = 'call-meta';
-                meta.textContent = `Call ${index + 1}: ${this.formatTime(call.duration)} - ${call.startTime.toLocaleTimeString()}`;
-                
-                const details = document.createElement('div');
-                details.className = 'call-details';
-                const label = call.label ? `"${call.label}"` : 'No label';
-                const notes = call.notes ? ` - ${call.notes}` : '';
-                details.textContent = `${label}${notes}`;
-                
-                entry.appendChild(meta);
-                entry.appendChild(details);
-                this.elements.callEntries.appendChild(entry);
-            });
-        }
-        
-        showSummary() {
-            const totalSessionTime = this.sessionEndTime - this.sessionStartTime;
-            const totalCallTime = this.calls.reduce((sum, call) => sum + call.duration, 0);
-            const totalDistractionTime = this.distractionElapsed;
-            const productiveTime = totalCallTime;
-            const productivePercentage = totalSessionTime > 0 ? Math.round((productiveTime / totalSessionTime) * 100) : 0;
-            
-            this.elements.totalSessionTime.textContent = this.formatTime(totalSessionTime);
-            this.elements.totalCallTime.textContent = this.formatTime(totalCallTime);
-            this.elements.totalDistractionTime.textContent = this.formatTime(totalDistractionTime);
-            this.elements.productivePercentage.textContent = `${productivePercentage}%`;
-            
-            this.elements.sessionSummary.style.display = 'block';
-        }
-        
-        exportCsv() {
-            if (this.calls.length === 0) {
-                alert('No calls to export!');
-                return;
+            if (isDistractionActive) {
+                elements.startDistractionBtn.disabled = true;
+                elements.endDistractionBtn.disabled = false;
+                elements.distractionSection.classList.add('active');
             }
             
-            const headers = ['Session Date', 'Call Number', 'Start Time', 'End Time', 'Duration (minutes)', 'Label', 'Notes'];
-            const sessionDate = new Date(this.sessionStartTime).toLocaleDateString();
+            if (data.callLabel) elements.callLabel.value = data.callLabel;
+            if (data.callNotes) elements.callNotes.value = data.callNotes;
             
-            const rows = this.calls.map((call, index) => [
-                sessionDate,
-                index + 1,
-                call.startTime.toLocaleTimeString(),
-                call.endTime.toLocaleTimeString(),
-                Math.round(call.duration / 60000 * 100) / 100, // Convert to minutes with 2 decimal places
-                call.label || '',
-                call.notes || ''
-            ]);
+            // Convert stored dates back to Date objects
+            calls = calls.map(call => ({
+                ...call,
+                startTime: new Date(call.startTime),
+                endTime: new Date(call.endTime)
+            }));
             
-            // Add summary row
-            const totalSessionTime = this.sessionEndTime - this.sessionStartTime;
-            const totalCallTime = this.calls.reduce((sum, call) => sum + call.duration, 0);
-            const totalDistractionTime = this.distractionElapsed;
-            const productivePercentage = totalSessionTime > 0 ? Math.round((totalCallTime / totalSessionTime) * 100) : 0;
+            updateCallLog();
             
-            rows.push([]);
-            rows.push(['SUMMARY', '', '', '', '', '', '']);
-            rows.push(['Total Session Time', '', '', '', Math.round(totalSessionTime / 60000 * 100) / 100, '', '']);
-            rows.push(['Total Call Time', '', '', '', Math.round(totalCallTime / 60000 * 100) / 100, '', '']);
-            rows.push(['Total Distraction Time', '', '', '', Math.round(totalDistractionTime / 60000 * 100) / 100, '', '']);
-            rows.push(['Productive Percentage', '', '', '', `${productivePercentage}%`, '', '']);
-            
-            const csvContent = [headers, ...rows]
-                .map(row => row.map(field => `"${field}"`).join(','))
-                .join('\n');
-            
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `call-session-${sessionDate.replace(/\//g, '-')}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-        
-        clearSession() {
-            if (confirm('Are you sure you want to clear this session? This cannot be undone.')) {
-                this.sessionStartTime = null;
-                this.sessionEndTime = null;
-                this.sessionElapsed = 0;
-                this.callStartTime = null;
-                this.callElapsed = 0;
-                this.distractionStartTime = null;
-                this.distractionElapsed = 0;
-                this.calls = [];
-                this.isSessionActive = false;
-                this.isCallActive = false;
-                this.isDistractionActive = false;
-                
-                this.elements.sessionDisplay.textContent = '00:00:00';
-                this.elements.callDisplay.textContent = '00:00:00';
-                this.elements.distractionDisplay.textContent = '00:00:00';
-                this.elements.callLabel.value = '';
-                this.elements.callNotes.value = '';
-                
-                this.elements.startSessionBtn.disabled = false;
-                this.elements.stopSessionBtn.disabled = true;
-                this.elements.startCallBtn.disabled = true;
-                this.elements.endCallBtn.disabled = true;
-                this.elements.startDistractionBtn.disabled = true;
-                this.elements.endDistractionBtn.disabled = true;
-                this.elements.callLabel.disabled = true;
-                this.elements.callNotes.disabled = true;
-                
-                this.elements.sessionSection.classList.remove('active');
-                this.elements.callSection.classList.remove('active');
-                this.elements.distractionSection.classList.remove('active');
-                this.elements.callDisplay.classList.remove('warning');
-                
-                this.elements.callLog.style.display = 'none';
-                this.elements.sessionSummary.style.display = 'none';
-                
-                this.clearStorage();
+            if (sessionEndTime) {
+                showSummary();
             }
-        }
-        
-        saveToStorage() {
-            const data = {
-                sessionStartTime: this.sessionStartTime,
-                sessionEndTime: this.sessionEndTime,
-                sessionElapsed: this.sessionElapsed,
-                callStartTime: this.callStartTime,
-                callElapsed: this.callElapsed,
-                distractionStartTime: this.distractionStartTime,
-                distractionElapsed: this.distractionElapsed,
-                calls: this.calls,
-                isSessionActive: this.isSessionActive,
-                isCallActive: this.isCallActive,
-                isDistractionActive: this.isDistractionActive,
-                callLabel: this.elements.callLabel.value,
-                callNotes: this.elements.callNotes.value
-            };
             
-            localStorage.setItem('callTimerData', JSON.stringify(data));
+        } catch (e) {
+            console.error('Error loading saved data:', e);
         }
-        
-        loadFromStorage() {
-            const stored = localStorage.getItem('callTimerData');
-            if (!stored) return;
-            
-            try {
-                const data = JSON.parse(stored);
-                
-                this.sessionStartTime = data.sessionStartTime;
-                this.sessionEndTime = data.sessionEndTime;
-                this.sessionElapsed = data.sessionElapsed || 0;
-                this.callStartTime = data.callStartTime;
-                this.callElapsed = data.callElapsed || 0;
-                this.distractionStartTime = data.distractionStartTime;
-                this.distractionElapsed = data.distractionElapsed || 0;
-                this.calls = data.calls || [];
-                this.isSessionActive = data.isSessionActive || false;
-                this.isCallActive = data.isCallActive || false;
-                this.isDistractionActive = data.isDistractionActive || false;
-                
-                // Restore UI state
-                if (this.isSessionActive) {
-                    this.elements.startSessionBtn.disabled = true;
-                    this.elements.stopSessionBtn.disabled = false;
-                    this.elements.startCallBtn.disabled = false;
-                    this.elements.startDistractionBtn.disabled = false;
-                    this.elements.callLabel.disabled = false;
-                    this.elements.callNotes.disabled = false;
-                    this.elements.sessionSection.classList.add('active');
-                    this.elements.callLog.style.display = 'block';
-                }
-                
-                if (this.isCallActive) {
-                    this.elements.startCallBtn.disabled = true;
-                    this.elements.endCallBtn.disabled = false;
-                    this.elements.callSection.classList.add('active');
-                }
-                
-                if (this.isDistractionActive) {
-                    this.elements.startDistractionBtn.disabled = true;
-                    this.elements.endDistractionBtn.disabled = false;
-                    this.elements.distractionSection.classList.add('active');
-                }
-                
-                if (data.callLabel) this.elements.callLabel.value = data.callLabel;
-                if (data.callNotes) this.elements.callNotes.value = data.callNotes;
-                
-                // Convert stored dates back to Date objects
-                this.calls = this.calls.map(call => ({
-                    ...call,
-                    startTime: new Date(call.startTime),
-                    endTime: new Date(call.endTime)
-                }));
-                
-                this.updateCallLog();
-                
-                if (this.sessionEndTime) {
-                    this.showSummary();
-                }
-                
-            } catch (e) {
-                console.error('Error loading saved data:', e);
-            }
-        }
-        
-        clearStorage
+    }
+
+    // Event listeners
+    elements.startSessionBtn.addEventListener('click', startSession);
+    elements.stopSessionBtn.addEventListener('click', stopSession);
+    elements.startCallBtn.addEventListener('click', startCall);
+    elements.endCallBtn.addEventListener('click', endCall);
+    elements.startDistractionBtn.addEventListener('click', startDistraction);
+    elements.endDistractionBtn.addEventListener('click', endDistraction);
+    elements.exportCsvBtn.addEventListener('click', exportCsv);
+    elements.clearSessionBtn.addEventListener('click', clearSession);
+
+    // Auto-save on input
+    elements.callLabel.addEventListener('input', saveToStorage);
+    elements.callNotes.addEventListener('input', saveToStorage);
+
+    // Initialize
+    loadFromStorage();
+    setInterval(updateDisplays, 1000);
+</script>
 ```
+
+</body>
+</html>
