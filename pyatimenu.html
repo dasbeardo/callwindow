@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Policy File Tree</title>
+  <style>
+    .tree {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      padding: 1rem;
+    }
+
+    .tree details {
+      margin-left: 1rem;
+    }
+
+    .tree summary {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .tree .blurb {
+      margin-left: 1.5rem;
+      font-style: italic;
+      opacity: 0.8;
+    }
+
+    .tree .files {
+      list-style: none;
+      padding-left: 1.5rem;
+      margin: 0.25rem 0 0.5rem;
+    }
+
+    .tree .files li {
+      white-space: nowrap;
+      font-family: "JetBrains Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    /* Tier-specific styling */
+    .tree details.tier1 > summary {
+      background: #111827;
+      color: #f9fafb;
+      padding: 4px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .tree details.tier2 > summary {
+      background: #e0f2fe;
+      color: #0f172a;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border-left: 3px solid #0284c7;
+      font-size: 13px;
+      margin-top: 4px;
+      margin-bottom: 2px;
+    }
+
+    .tree details.tier3 > summary {
+      background: #f5f5f5;
+      color: #111827;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border-left: 3px solid #9ca3af;
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 2px;
+      margin-bottom: 2px;
+    }
+
+    /* Tier badges */
+    .tree details.tier1 > summary::before,
+    .tree details.tier2 > summary::before,
+    .tree details.tier3 > summary::before {
+      display: inline-block;
+      padding: 1px 6px;
+      margin-right: 6px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .tree details.tier1 > summary::before {
+      content: "T1";
+      background: #f59e0b;
+      color: #111827;
+    }
+
+    .tree details.tier2 > summary::before {
+      content: "T2";
+      background: #0ea5e9;
+      color: #0b1120;
+    }
+
+    .tree details.tier3 > summary::before {
+      content: "T3";
+      background: #9ca3af;
+      color: #111827;
+    }
+  </style>
+</head>
+<body>
+  <div class="tree">
+
+    <!-- lvl 1: renew -->
+    <details class="tier1" open>
+      <summary>renew</summary>
+
+      <!-- level 2: renew_expand -->
+      <details class="tier2">
+        <summary>renew_expand</summary>
+
+        <!-- level 2 variants -->
+        <ul class="files">
+          <li>renew_expand (desktop_open)</li>
+          <li>renew_expand (desktop_closed)</li>
+          <li>renew_expand (mobile_open)</li>
+          <li>renew_expand (mobile_closed)</li>
+        </ul>
+
+        <div class="blurb">#blurb</div>
+
+        <!-- level 3: renew_expand_expand -->
+        <details class="tier3">
+          <summary>renew_expand_expand</summary>
+          <ul class="files">
+            <li>renew_expand_expand (desktop_open)</li>
+            <li>renew_expand_expand (desktop_closed)</li>
+            <li>renew_expand_expand (mobile_open)</li>
+            <li>renew_expand_expand (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: renew_expand_paths -->
+        <details class="tier3">
+          <summary>renew_expand_paths</summary>
+          <ul class="files">
+            <li>renew_expand_paths (desktop_open)</li>
+            <li>renew_expand_paths (desktop_closed)</li>
+            <li>renew_expand_paths (mobile_open)</li>
+            <li>renew_expand_paths (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: renew_expand_eduai -->
+        <details class="tier3">
+          <summary>renew_expand_eduai</summary>
+          <ul class="files">
+            <li>renew_expand_eduai (desktop_open)</li>
+            <li>renew_expand_eduai (desktop_closed)</li>
+            <li>renew_expand_eduai (mobile_open)</li>
+            <li>renew_expand_eduai (mobile_closed)</li>
+          </ul>
+        </details>
+      </details>
+
+      <!-- level 2: renew_afford -->
+      <details class="tier2">
+        <summary>renew_afford</summary>
+
+        <!-- level 2 variants -->
+        <ul class="files">
+          <li>renew_afford (desktop_open)</li>
+          <li>renew_afford (desktop_closed)</li>
+          <li>renew_afford (mobile_open)</li>
+          <li>renew_afford (mobile_closed)</li>
+        </ul>
+
+        <div class="blurb">#blurb</div>
+
+        <!-- level 3: renew_afford_markets -->
+        <details class="tier3">
+          <summary>renew_afford_markets</summary>
+          <ul class="files">
+            <li>renew_afford_markets (desktop_open)</li>
+            <li>renew_afford_markets (desktop_closed)</li>
+            <li>renew_afford_markets (mobile_open)</li>
+            <li>renew_afford_markets (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: renew_afford_housing -->
+        <details class="tier3">
+          <summary>renew_afford_housing</summary>
+          <ul class="files">
+            <li>renew_afford_housing (desktop_open)</li>
+            <li>renew_afford_housing (desktop_closed)</li>
+            <li>renew_afford_housing (mobile_open)</li>
+            <li>renew_afford_housing (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: renew_afford_taxcode -->
+        <details class="tier3">
+          <summary>renew_afford_taxcode</summary>
+          <ul class="files">
+            <li>renew_afford_taxcode (desktop_open)</li>
+            <li>renew_afford_taxcode (desktop_closed)</li>
+            <li>renew_afford_taxcode (mobile_open)</li>
+            <li>renew_afford_taxcode (mobile_closed)</li>
+          </ul>
+        </details>
+      </details>
+
+      <!-- level 2: renew_care -->
+      <details class="tier2">
+        <summary>renew_care</summary>
+
+        <!-- level 2 variants -->
+        <ul class="files">
+          <li>renew_care (desktop_open)</li>
+          <li>renew_care (desktop_closed)</li>
+          <li>renew_care (mobile_open)</li>
+          <li>renew_care (mobile_closed)</li>
+        </ul>
+
+        <div class="blurb">#blurb</div>
+
+        <!-- level 3: renew_care_mediss -->
+        <details class="tier3">
+          <summary>renew_care_mediss</summary>
+          <ul class="files">
+            <li>renew_care_mediss (desktop_open)</li>
+            <li>renew_care_mediss (desktop_closed)</li>
+            <li>renew_care_mediss (mobile_open)</li>
+            <li>renew_care_mediss (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: renew_care_immigration -->
+        <details class="tier3">
+          <summary>renew_care_immigration</summary>
+          <ul class="files">
+            <li>renew_care_immigration (desktop_open)</li>
+            <li>renew_care_immigration (desktop_closed)</li>
+            <li>renew_care_immigration (mobile_open)</li>
+            <li>renew_care_immigration (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: renew_care_advpol -->
+        <details class="tier3">
+          <summary>renew_care_advpol</summary>
+          <ul class="files">
+            <li>renew_care_advpol (desktop_open)</li>
+            <li>renew_care_advpol (desktop_closed)</li>
+            <li>renew_care_advpol (mobile_open)</li>
+            <li>renew_care_advpol (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: renew_care_eduai -->
+        <details class="tier3">
+          <summary>renew_care_eduai</summary>
+          <ul class="files">
+            <li>renew_care_eduai (desktop_open)</li>
+            <li>renew_care_eduai (desktop_closed)</li>
+            <li>renew_care_eduai (mobile_open)</li>
+            <li>renew_care_eduai (mobile_closed)</li>
+          </ul>
+        </details>
+      </details>
+    </details>
+
+    <!-- lvl 1: build -->
+    <details class="tier1" open>
+      <summary>build</summary>
+
+      <!-- level 2: build_invest -->
+      <details class="tier2">
+        <summary>build_invest</summary>
+
+        <!-- level 2 variants -->
+        <ul class="files">
+          <li>build_invest (desktop_open)</li>
+          <li>build_invest (desktop_closed)</li>
+          <li>build_invest (mobile_open)</li>
+          <li>build_invest (mobile_closed)</li>
+        </ul>
+
+        <div class="blurb">#blurb</div>
+
+        <!-- level 3: build_invest_research -->
+        <details class="tier3">
+          <summary>build_invest_research</summary>
+          <ul class="files">
+            <li>build_invest_research (desktop_open)</li>
+            <li>build_invest_research (desktop_closed)</li>
+            <li>build_invest_research (mobile_open)</li>
+            <li>build_invest_research (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: build_invest_industries -->
+        <details class="tier3">
+          <summary>build_invest_industries</summary>
+          <ul class="files">
+            <li>build_invest_industries (desktop_open)</li>
+            <li>build_invest_industries (desktop_closed)</li>
+            <li>build_invest_industries (mobile_open)</li>
+            <li>build_invest_industries (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: build_invest_incentive -->
+        <details class="tier3">
+          <summary>build_invest_incentive</summary>
+          <ul class="files">
+            <li>build_invest_incentive (desktop_open)</li>
+            <li>build_invest_incentive (desktop_closed)</li>
+            <li>build_invest_incentive (mobile_open)</li>
+            <li>build_invest_incentive (mobile_closed)</li>
+          </ul>
+        </details>
+      </details>
+
+      <!-- level 2: build_economy -->
+      <details class="tier2">
+        <summary>build_economy</summary>
+
+        <!-- level 2 variants -->
+        <ul class="files">
+          <li>build_economy (desktop_open)</li>
+          <li>build_economy (desktop_closed)</li>
+          <li>build_economy (mobile_open)</li>
+          <li>build_economy (mobile_closed)</li>
+        </ul>
+
+        <div class="blurb">#blurb</div>
+
+        <!-- level 3: build_economy_trade -->
+        <details class="tier3">
+          <summary>build_economy_trade</summary>
+          <ul class="files">
+            <li>build_economy_trade (desktop_open)</li>
+            <li>build_economy_trade (desktop_closed)</li>
+            <li>build_economy_trade (mobile_open)</li>
+            <li>build_economy_trade (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: build_economy_relationships -->
+        <details class="tier3">
+          <summary>build_economy_relationships</summary>
+          <ul class="files">
+            <li>build_economy_relationships (desktop_open)</li>
+            <li>build_economy_relationships (desktop_closed)</li>
+            <li>build_economy_relationships (mobile_open)</li>
+            <li>build_economy_relationships (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: build_economy_antitrust -->
+        <details class="tier3">
+          <summary>build_economy_antitrust</summary>
+          <ul class="files">
+            <li>build_economy_antitrust (desktop_open)</li>
+            <li>build_economy_antitrust (desktop_closed)</li>
+            <li>build_economy_antitrust (mobile_open)</li>
+            <li>build_economy_antitrust (mobile_closed)</li>
+          </ul>
+        </details>
+      </details>
+
+      <!-- level 2: build_regulation -->
+      <details class="tier2">
+        <summary>build_regulation</summary>
+
+        <!-- level 2 variants -->
+        <ul class="files">
+          <li>build_regulation (desktop_open)</li>
+          <li>build_regulation (desktop_closed)</li>
+          <li>build_regulation (mobile_open)</li>
+          <li>build_regulation (mobile_closed)</li>
+        </ul>
+
+        <div class="blurb">#blurb</div>
+
+        <!-- level 3: build_regulation_participation -->
+        <details class="tier3">
+          <summary>build_regulation_participation</summary>
+          <ul class="files">
+            <li>build_regulation_participation (desktop_open)</li>
+            <li>build_regulation_participation (desktop_closed)</li>
+            <li>build_regulation_participation (mobile_open)</li>
+            <li>build_regulation_participation (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: build_regulation_partners -->
+        <details class="tier3">
+          <summary>build_regulation_partners</summary>
+          <ul class="files">
+            <li>build_regulation_partners (desktop_open)</li>
+            <li>build_regulation_partners (desktop_closed)</li>
+            <li>build_regulation_partners (mobile_open)</li>
+            <li>build_regulation_partners (mobile_closed)</li>
+          </ul>
+        </details>
+      </details>
+    </details>
+
+    <!-- lvl 1: fight -->
+    <details class="tier1" open>
+      <summary>fight</summary>
+
+      <!-- level 2: fight_secure -->
+      <details class="tier2">
+        <summary>fight_secure</summary>
+
+        <!-- level 2 variants -->
+        <ul class="files">
+          <li>fight_secure (desktop_open)</li>
+          <li>fight_secure (desktop_closed)</li>
+          <li>fight_secure (mobile_open)</li>
+          <li>fight_secure (mobile_closed)</li>
+        </ul>
+
+        <div class="blurb">#blurb</div>
+
+        <!-- level 3: fight_secure_intimidation -->
+        <details class="tier3">
+          <summary>fight_secure_intimidation</summary>
+          <ul class="files">
+            <li>fight_secure_intimidation (desktop_open)</li>
+            <li>fight_secure_intimidation (desktop_closed)</li>
+            <li>fight_secure_intimidation (mobile_open)</li>
+            <li>fight_secure_intimidation (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: fight_secure_expression -->
+        <details class="tier3">
+          <summary>fight_secure_expression</summary>
+          <ul class="files">
+            <li>fight_secure_expression (desktop_open)</li>
+            <li>fight_secure_expression (desktop_closed)</li>
+            <li>fight_secure_expression (mobile_open)</li>
+            <li>fight_secure_expression (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: fight_secure_finance -->
+        <details class="tier3">
+          <summary>fight_secure_finance</summary>
+          <ul class="files">
+            <li>fight_secure_finance (desktop_open)</li>
+            <li>fight_secure_finance (desktop_closed)</li>
+            <li>fight_secure_finance (mobile_open)</li>
+            <li>fight_secure_finance (mobile_closed)</li>
+          </ul>
+        </details>
+      </details>
+
+      <!-- level 2: fight_civrights -->
+      <details class="tier2">
+        <summary>fight_civrights</summary>
+
+        <!-- level 2 variants -->
+        <ul class="files">
+          <li>fight_civrights (desktop_open)</li>
+          <li>fight_civrights (desktop_closed)</li>
+          <li>fight_civrights (mobile_open)</li>
+          <li>fight_civrights (mobile_closed)</li>
+        </ul>
+
+        <div class="blurb">#blurb</div>
+
+        <!-- level 3: fight_civrights_enforce -->
+        <details class="tier3">
+          <summary>fight_civrights_enforce</summary>
+          <ul class="files">
+            <li>fight_civrights_enforce (desktop_open)</li>
+            <li>fight_civrights_enforce (desktop_closed)</li>
+            <li>fight_civrights_enforce (mobile_open)</li>
+            <li>fight_civrights_enforce (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: fight_civrights_livelove -->
+        <details class="tier3">
+          <summary>fight_civrights_livelove</summary>
+          <ul class="files">
+            <li>fight_civrights_livelove (desktop_open)</li>
+            <li>fight_civrights_livelove (desktop_closed)</li>
+            <li>fight_civrights_livelove (mobile_open)</li>
+            <li>fight_civrights_livelove (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: fight_civrights_reproductive -->
+        <details class="tier3">
+          <summary>fight_civrights_reproductive</summary>
+          <ul class="files">
+            <li>fight_civrights_reproductive (desktop_open)</li>
+            <li>fight_civrights_reproductive (desktop_closed)</li>
+            <li>fight_civrights_reproductive (mobile_open)</li>
+            <li>fight_civrights_reproductive (mobile_closed)</li>
+          </ul>
+        </details>
+      </details>
+
+      <!-- level 2: fight_democracy -->
+      <details class="tier2">
+        <summary>fight_democracy</summary>
+
+        <!-- level 2 variants -->
+        <ul class="files">
+          <li>fight_democracy (desktop_open)</li>
+          <li>fight_democracy (desktop_closed)</li>
+          <li>fight_democracy (mobile_open)</li>
+          <li>fight_democracy (mobile_closed)</li>
+        </ul>
+
+        <div class="blurb">#blurb</div>
+
+        <!-- level 3: fight_democracy_rebuild -->
+        <details class="tier3">
+          <summary>fight_democracy_rebuild</summary>
+          <ul class="files">
+            <li>fight_democracy_rebuild (desktop_open)</li>
+            <li>fight_democracy_rebuild (desktop_closed)</li>
+            <li>fight_democracy_rebuild (mobile_open)</li>
+            <li>fight_democracy_rebuild (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: fight_democracy_aid -->
+        <details class="tier3">
+          <summary>fight_democracy_aid</summary>
+          <ul class="files">
+            <li>fight_democracy_aid (desktop_open)</li>
+            <li>fight_democracy_aid (desktop_closed)</li>
+            <li>fight_democracy_aid (mobile_open)</li>
+            <li>fight_democracy_aid (mobile_closed)</li>
+          </ul>
+        </details>
+
+        <!-- level 3: fight_democracy_defend -->
+        <details class="tier3">
+          <summary>fight_democracy_defend</summary>
+          <ul class="files">
+            <li>fight_democracy_defend (desktop_open)</li>
+            <li>fight_democracy_defend (desktop_closed)</li>
+            <li>fight_democracy_defend (mobile_open)</li>
+            <li>fight_democracy_defend (mobile_closed)</li>
+          </ul>
+        </details>
+      </details>
+    </details>
+
+  </div>
+</body>
+</html>
