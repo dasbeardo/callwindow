@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Project Coven: Scrolls Prototype</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <style>
+        body { margin: 0; background: #202020; font-family: 'Courier New', monospace; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .hud-btn { pointer-events: auto; background: #333; color: white; border: 2px solid #555; padding: 10px; cursor: pointer; }
+        #end-turn { position: absolute; right: 20px; bottom: 20px; background: #800; font-weight: bold; }
+        #resources { position: absolute; left: 20px; top: 20px; color: #0f0; font-size: 20px; }
+        #hand { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; pointer-events: auto; }
+        .card { width: 80px; height: 120px; background: #1a1a1a; border: 1px solid #444; color: #ccc; padding: 5px; font-size: 10px; user-select: none; }
+        .card:hover { transform: translateY(-10px); border-color: #fff; background: #222; }
+        .card-title { font-weight: bold; color: #d88; margin-bottom: 5px; }
+        .card-stats { margin-top: 5px; color: #88d; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div id="resources">Budget: 0 / 0 <br> <span style="font-size:14px; color:#888">(Sacrifice a card to increase max)</span></div>
+        <div id="hand"></div>
+        <button id="end-turn" class="hud-btn" onclick="game.scene.scenes[0].endTurn()">END TURN</button>
+    </div>
+
+<script>
+// --- CONFIGURATION ---
+const TILE_SIZE = 60;
+const ROWS = 5;
+const COLS = 6; // 0-2 (Player), 3-5 (Enemy)
+const SCREEN_WIDTH = 1280;
+const SCREEN_HEIGHT = 720;
+const OFFSET_X = 200;
+const OFFSET_Y = 150;
+
+// --- DATA: THE COVEN DECK ---
+const CARD_DATABASE = {
+    'thrall': { name: 'Thrall', cost: 1, atk: 1, hp: 1, cd: 2, color: 0x884444 },
+    'ghoul': { name: 'Ghoul', cost: 2, atk: 2, hp: 2, cd: 2, color: 0x448844, ability: "Undying" },
+    'vampire': { name: 'Vampire', cost: 4, atk: 3, hp: 4, cd: 3, color: 0x880000, ability: "Drain" }
+};
+
+class MainScene extends Phaser.Scene {
+    constructor() { super('MainScene'); }
+
+    preload() {
+        // Just using generated graphics, no assets needed
+    }
+
+    create() {
+        // Game State
+        this.turn = 1;
+        this.mana = 0;
+        this.maxMana = 0;
+        this.hasSacrificed = false;
+        this.units = []; // Stores all unit objects
+        this.grid = {};  // Stores logic: "0,0" -> unit
+
+        // 1. Draw The Board
+        this.createGrid();
+
+        // 2. Draw Idols (The Win Condition)
+        this.createIdols();
+
+        // 3. Initial Hand
+        this.hand = ['thrall', 'thrall', 'ghoul', 'ghoul', 'vampire'];
+        this.renderHand();
+        this.updateUI();
+    }
+
+    createGrid() {
+        this.tiles = this.add.group();
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                // Hex Offset Logic (Staggered Rows)
+                let x = OFFSET_X + (c * TILE_SIZE * 1.1);
+                let y = OFFSET_Y + (r * TILE_SIZE * 1.2);
+                if (c % 2 === 1) y += TILE_SIZE * 0.6; // Stagger odd columns
+
+                // Visuals
+                let color = (c < 3) ? 0x222244 : 0x442222; // Blue vs Red side
+                let hex = this.add.polygon(x, y, this.getHexPoints(), color)
+                    .setStrokeStyle(2, 0x666666)
+                    .setInteractive();
+                
+                // Logic Data
+                hex.gridPos = { r, c };
+                hex.on('pointerdown', () => this.onTileClick(r, c));
+                this.tiles.add(hex);
+            }
+        }
+    }
+
+    createIdols() {
+        // Player Idols (Left)
+        for(let r=0; r<ROWS; r++) {
+            this.add.rectangle(OFFSET_X - 60, OFFSET_Y + (r * 72), 30, 30, 0x00ffff);
+        }
+        // Enemy Idols (Right)
+        for(let r=0; r<ROWS; r++) {
+            this.add.rectangle(OFFSET_X + (COLS * 66) + 30, OFFSET_Y + (r * 72), 30, 30, 0xff0000);
+        }
+    }
+
+    getHexPoints() {
+        // Simple hexagon shape points
+        return [0, -30, 26, -15, 26, 15, 0, 30, -26, 15, -26, -15];
+    }
+
+    // --- GAMEPLAY LOGIC ---
+
+    onTileClick(r, c) {
+        if (!this.selectedCard) return;
+
+        // Validation: Can only place on Player Side (Cols 0-2)
+        if (c > 2) { alert("Can't deploy on enemy side!"); return; }
+        if (this.grid[`${r},${c}`]) { alert("Tile occupied!"); return; }
+
+        // Deploy Unit
+        this.spawnUnit(this.selectedCard, r, c, true);
+        
+        // Remove from hand and Mana
+        let idx = this.hand.indexOf(this.selectedCard);
+        if (idx > -1) this.hand.splice(idx, 1);
+        this.mana -= CARD_DATABASE[this.selectedCard].cost;
+        
+        this.selectedCard = null;
+        this.renderHand();
+        this.updateUI();
+    }
+
+    spawnUnit(cardId, r, c, isPlayer) {
+        let stats = CARD_DATABASE[cardId];
+        
+        // Visual
+        let x = OFFSET_X + (c * TILE_SIZE * 1.1);
+        let y = OFFSET_Y + (r * TILE_SIZE * 1.2);
+        if (c % 2 === 1) y += TILE_SIZE * 0.6;
+
+        let sprite = this.add.container(x, y);
+        
+        // Unit Body
+        let gfx = this.add.circle(0, 0, 20, stats.color);
+        sprite.add(gfx);
+
+        // Text Stats
+        let text = this.add.text(-10, -8, `${stats.atk}/${stats.hp}`, { fontSize: '12px', color: '#fff' });
+        let cdText = this.add.text(8, -25, `⏳${stats.cd}`, { fontSize: '14px', color: '#ff0', fontStyle: 'bold' });
+        sprite.add([text, cdText]);
+
+        // Logic Object
+        let unit = {
+            id: Math.random(),
+            stats: { ...stats }, // clone stats
+            currentCD: stats.cd,
+            currentHP: stats.hp,
+            r: r, c: c,
+            isPlayer: isPlayer,
+            visual: sprite,
+            cdText: cdText,
+            hpText: text
+        };
+
+        this.units.push(unit);
+        this.grid[`${r},${c}`] = unit;
+    }
+
+    // --- TURN LOOP ---
+
+    endTurn() {
+        console.log("--- TURN END ---");
+        
+        // 1. Resolve Combat (Attacks)
+        this.resolveCombat();
+
+        // 2. Reduce Countdowns
+        this.units.forEach(u => {
+            if (u.currentCD > 0) u.currentCD--;
+            u.cdText.setText(`⏳${u.currentCD}`);
+            if(u.currentCD === 0) u.cdText.setColor('#f00'); // Ready to attack
+        });
+
+        // 3. Enemy Turn (Basic AI: Spawn a Thrall in random row)
+        let randomRow = Phaser.Math.Between(0, 4);
+        if (!this.grid[`${randomRow},5`]) {
+            this.spawnUnit('thrall', randomRow, 5, false);
+        }
+
+        // 4. Start Next Turn
+        this.turn++;
+        this.mana = this.maxMana; // Refill Mana
+        this.hasSacrificed = false;
+        this.hand.push('thrall'); // Draw a card
+        
+        this.renderHand();
+        this.updateUI();
+    }
+
+    resolveCombat() {
+        // Filter units ready to attack (CD == 0)
+        let attackers = this.units.filter(u => u.currentCD === 0);
+        
+        // Sort: Top row first, then front-most column
+        attackers.sort((a, b) => {
+            if (a.r !== b.r) return a.r - b.r;
+            return (a.isPlayer) ? b.c - a.c : a.c - b.c; // Player attacks right, Enemy attacks left
+        });
+
+        attackers.forEach(att => {
+            console.log(`Unit at ${att.r},${att.c} attacks!`);
+            
+            // Raycast: Find first target in lane
+            let target = null;
+            let dir = att.isPlayer ? 1 : -1;
+            
+            for (let i = 1; i < 6; i++) {
+                let checkC = att.c + (i * dir);
+                if (checkC < 0 || checkC >= COLS) break; // Hit Idol (Logic not fully impl for idol dmg yet)
+                
+                let enemy = this.grid[`${att.r},${checkC}`];
+                if (enemy && enemy.isPlayer !== att.isPlayer) {
+                    target = enemy;
+                    break;
+                }
+            }
+
+            if (target) {
+                target.currentHP -= att.stats.atk;
+                target.hpText.setText(`${target.stats.atk}/${target.currentHP}`);
+                
+                // Unit Death
+                if (target.currentHP <= 0) {
+                    this.killUnit(target);
+                }
+            } else {
+                console.log("Hit Idol! (Feature pending)");
+            }
+
+            // Reset CD
+            att.currentCD = att.stats.cd;
+            att.cdText.setText(`⏳${att.currentCD}`);
+            att.cdText.setColor('#ff0');
+        });
+    }
+
+    killUnit(unit) {
+        unit.visual.destroy();
+        delete this.grid[`${unit.r},${unit.c}`];
+        this.units = this.units.filter(u => u !== unit);
+    }
+
+    // --- UI HELPERS ---
+
+    renderHand() {
+        const container = document.getElementById('hand');
+        container.innerHTML = '';
+        
+        this.hand.forEach((cardId, index) => {
+            let data = CARD_DATABASE[cardId];
+            let div = document.createElement('div');
+            div.className = 'card';
+            div.innerHTML = `<div class="card-title">${data.name}</div>Cost: ${data.cost}<div class="card-stats">⚔️${data.atk} ❤️${data.hp} ⏳${data.cd}</div>`;
+            
+            // Play Card Logic
+            div.onclick = () => {
+                if (this.mana >= data.cost) {
+                    this.selectedCard = cardId;
+                    document.querySelectorAll('.card').forEach(c => c.style.borderColor = '#444');
+                    div.style.borderColor = '#0f0'; // Highlight
+                } else {
+                    alert("Not enough Budget!");
+                }
+            };
+
+            // Sacrifice Logic (Right Click)
+            div.oncontextmenu = (e) => {
+                e.preventDefault();
+                if (!this.hasSacrificed) {
+                    this.hasSacrificed = true;
+                    this.maxMana++;
+                    this.mana++; // You gain the mana immediately in Scrolls
+                    this.hand.splice(index, 1);
+                    this.renderHand();
+                    this.updateUI();
+                } else {
+                    alert("Already sacrificed this turn!");
+                }
+            };
+
+            container.appendChild(div);
+        });
+    }
+
+    updateUI() {
+        document.getElementById('resources').innerHTML = `Budget: ${this.mana} / ${this.maxMana} <br> <span style="font-size:14px; color:#888">(Right-Click card to Sacrifice)</span>`;
+    }
+}
+
+const config = {
+    type: Phaser.AUTO,
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    backgroundColor: '#202020',
+    parent: 'game-container',
+    scene: MainScene
+};
+
+const game = new Phaser.Game(config);
+</script>
+
+</body>
+</html>
