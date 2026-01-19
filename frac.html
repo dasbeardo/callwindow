@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>The DS-FUN 9000: Infinite Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root { --hud-bg: rgba(10, 20, 15, 0.85); --hud-border: #00ffaa; --text: #aaffdd; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', 'Courier New', monospace; color: var(--text); }
+        
+        /* Layout */
+        #container { position: relative; width: 100vw; height: 100vh; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
+        #gpuCanvas { z-index: 1; } /* The Fractal */
+        #uiCanvas { z-index: 2; pointer-events: none; } /* The Orbit Lines */
+
+        /* UI Overlay */
+        #hud {
+            position: absolute; top: 20px; left: 20px; z-index: 10;
+            width: 320px; background: var(--hud-bg);
+            border: 1px solid var(--hud-border);
+            border-radius: 8px; padding: 20px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 0 20px rgba(0, 255, 170, 0.2);
+            transition: opacity 0.3s;
+        }
+        
+        h1 { margin: 0 0 10px 0; font-size: 20px; color: #fff; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid var(--hud-border); padding-bottom: 10px; }
+        
+        .row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+        .val { font-weight: bold; color: #fff; font-family: monospace; }
+        
+        button {
+            background: rgba(0, 255, 170, 0.1); border: 1px solid var(--hud-border); color: var(--text);
+            padding: 8px; width: 100%; margin-top: 10px; cursor: pointer;
+            text-transform: uppercase; font-size: 11px; letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+        button:hover { background: var(--hud-border); color: #000; box-shadow: 0 0 10px var(--hud-border); }
+        
+        .toggle-group { display: flex; gap: 5px; margin-top: 15px; }
+        .toggle-group button { margin-top: 0; }
+        .active { background: var(--hud-border); color: #000; font-weight: bold; }
+
+        .hint { font-size: 11px; color: #88aa99; margin-top: 15px; font-style: italic; border-top: 1px solid #334433; padding-top: 10px; line-height: 1.4; }
+        #error { color: #ff5555; font-weight: bold; padding: 20px; display: none; background: #220000; border: 1px solid red; }
+
+        /* Mobile controls hint */
+        #mobile-hint { display: none; }
+        @media (max-width: 600px) { #hud { width: calc(100% - 40px); bottom: 20px; top: auto; } }
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <canvas id="gpuCanvas"></canvas>
+    <canvas id="uiCanvas"></canvas>
+    
+    <div id="hud">
+        <h1>DS-FUN 9000</h1>
+        <div id="error">WebGPU Not Supported. Use Chrome/Edge desktop.</div>
+        
+        <div class="row"><span>Zoom:</span> <span class="val" id="ui-zoom">1.0e0</span></div>
+        <div class="row"><span>Iter:</span> <span class="val" id="ui-iter">500</span></div>
+        <div class="row"><span>FPS:</span> <span class="val" id="ui-fps">--</span></div>
+        <div class="row" style="margin-top:10px; border-bottom: 1px solid #334433; padding-bottom:5px;"><span>Coordinates:</span></div>
+        <div class="row" style="display:block; font-size:11px; word-break:break-all;">
+            <span id="ui-coords" style="color:#fff;">0.000 + 0.000i</span>
+        </div>
+
+        <div class="toggle-group">
+            <button id="btn-2d" class="active">Data View</button>
+            <button id="btn-3d">3D Relief</button>
+        </div>
+        
+        <div style="margin-top: 15px; font-size: 12px; font-weight: bold; color: var(--hud-border);">LOCATIONS:</div>
+        <div class="toggle-group">
+            <button onclick="jumpTo('seahorse')">Seahorse</button>
+            <button onclick="jumpTo('elephant')">Elephant</button>
+            <button onclick="jumpTo('minibrot')">Deep Mini</button>
+        </div>
+        <button onclick="jumpTo('home')">Reset View</button>
+
+        <div class="hint">
+            <strong>Controls:</strong> Scroll to Zoom. Drag to Pan.<br>
+            <strong>The Chaos Probe:</strong> The yellow lines show the orbit of the point under your mouse. Hover over the edge of the set to see the chaos!
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================================== -->
+<!-- WGSL COMPUTE SHADER: The Math Brain -->
+<!-- ========================================================================================== -->
+<script type="text/wgsl" id="shader-code">
+    // --- DSFUN: Double-Single Emulated Precision Library ---
+    // Emulates 64-bit precision using pairs of 32-bit floats (hi, lo)
+    
+    struct ds { hi: f32, lo: f32 };
+
+    fn ds_make(f: f32) -> ds { return ds(f, 0.0); }
+    
+    fn ds_add(a: ds, b: ds) -> ds {
+        let t1 = a.hi + b.hi;
+        let e = t1 - a.hi;
+        let t2 = ((b.hi - e) + (a.hi - (t1 - e))) + a.lo + b.lo;
+        let hi = t1 + t2;
+        let lo = t2 - (hi - t1);
+        return ds(hi, lo);
+    }
+
+    fn ds_sub(a: ds, b: ds) -> ds {
+        return ds_add(a, ds(-b.hi, -b.lo));
+    }
+
+    fn ds_mul(a: ds, b: ds) -> ds {
+        let C = 134217729.0;
+        let cona = a.hi * C; let conb = b.hi * C;
+        let sa1 = cona - (cona - a.hi); let sa2 = a.hi - sa1;
+        let sb1 = conb - (conb - b.hi); let sb2 = b.hi - sb1;
+        let t1 = a.hi * b.hi;
+        let t2 = (((sa1 * sb1 - t1) + sa1 * sb2) + sa2 * sb1) + sa2 * sb2;
+        let t3 = t2 + a.hi * b.lo + a.lo * b.hi;
+        let hi = t1 + t3; let lo = t3 - (hi - t1);
+        return ds(hi, lo);
+    }
+    
+    fn ds_sqr(a: ds) -> ds { return ds_mul(a, a); }
+    
+    // --- MAIN SHADER ---
+    
+    struct Uniforms {
+        resolution: vec2f,
+        centerX_hi: f32, centerX_lo: f32,
+        centerY_hi: f32, centerY_lo: f32,
+        zoom_hi: f32, zoom_lo: f32,
+        maxIter: u32,
+        mode: u32, // 0 = 2D Data, 1 = 3D Relief
+    };
+
+    @group(0) @binding(0) var<uniform> u: Uniforms;
+    @group(0) @binding(1) var outTex: texture_storage_2d<bgra8unorm, write>;
+
+    // Helpers
+    fn hsb2rgb(c: vec3f) -> vec3f {
+        let K = vec4f(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+        let p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+        return c.z * mix(K.xxx, clamp(p - K.xxx, vec3f(0.0), vec3f(1.0)), c.y);
+    }
+
+    @compute @workgroup_size(8, 8)
+    fn main(@builtin(global_invocation_id) id: vec3u) {
+        if (id.x >= u32(u.resolution.x) || id.y >= u32(u.resolution.y)) { return; }
+
+        let width = u.resolution.x;
+        let height = u.resolution.y;
+        let aspect = width / height;
+
+        // Screen mapping: p = (uv - 0.5) * 2.0 * [aspect, 1.0]
+        let uv = vec2f(f32(id.x) / width, 1.0 - f32(id.y) / height); // Flip Y
+        let p = (uv - 0.5) * 2.0;
+        let px = p.x * aspect;
+        let py = p.y;
+
+        // C = Center + (Pixel / Zoom)
+        // Zoom is huge, so 1/Zoom is tiny. 
+        // We construct the pixel offset carefully.
+        
+        let zoom = ds(u.zoom_hi, u.zoom_lo);
+        let invZoomHi = 1.0 / u.zoom_hi; // Approximation for speed, usually fine for offset
+        // For deep zoom, we need ds division, but here we can cheat slightly:
+        // C = Center + (Pixel * Scale). Scale = 1/Zoom.
+        // We will calculate Scale in CPU and pass it? No, let's just use hi-part approximation for the pixel delta
+        // because the pixel delta relative to the center is small.
+        // Wait, for 10^14, 1/Zoom is 10^-14. f32 handles down to 10^-38. 
+        // We only lose precision if we add a small number to a big number.
+        // Here we add small (pixel offset) to small (view window width). It works ok.
+        
+        let scale = ds(1.0 / u.zoom_hi, 0.0); // Simple inverse
+        
+        let offX = ds_mul(ds_make(px), scale);
+        let offY = ds_mul(ds_make(py), scale);
+        
+        let cx = ds_add(ds(u.centerX_hi, u.centerX_lo), offX);
+        let cy = ds_add(ds(u.centerY_hi, u.centerY_lo), offY);
+
+        var zx = ds(0.0, 0.0);
+        var zy = ds(0.0, 0.0);
+        var zx2 = ds(0.0, 0.0);
+        var zy2 = ds(0.0, 0.0);
+        
+        var iter = 0u;
+        var escaped = false;
+        
+        // Derivatives for Distance Estimation (DE)
+        var dx = ds(1.0, 0.0); var dy = ds(0.0, 0.0); // Start as identity for Mandelbrot? No, start 0 for z0=0
+        var derX = 0.0; var derY = 0.0; // Running derivative (using standard float for speed, DE is visual)
+        // Actually, DE needs (z') -> 2*z*z' + 1. 
+        // Standard floats are usually sufficient for DE visuals even at depth if z is normalized.
+        
+        // Loop
+        for (var i = 0u; i < u.maxIter; i++) {
+            zx2 = ds_sqr(zx);
+            zy2 = ds_sqr(zy);
+            
+            // Bailout check > 4.0
+            if (zx2.hi + zy2.hi > 4.0) { escaped = true; iter = i; break; }
+            
+            // Derivative logic (Chain rule: z' = 2zz' + 1)
+            // (x + iy)' = x' + iy'
+            // New Der = 2 * z * Der + 1
+            if (u.mode == 1u) {
+                // We use standard floats for the derivative to save huge perf cost
+                // z is (zx.hi, zy.hi), der is (derX, derY)
+                let tempDerX = 2.0 * (zx.hi * derX - zy.hi * derY) + 1.0;
+                derY = 2.0 * (zx.hi * derY + zy.hi * derX);
+                derX = tempDerX;
+            }
+
+            // Z = Z^2 + C
+            let two_zx = ds_add(zx, zx);
+            let next_y = ds_add(ds_mul(two_zx, zy), cy);
+            let next_x = ds_add(ds_sub(zx2, zy2), cx);
+            
+            zx = next_x;
+            zy = next_y;
+        }
+
+        var color = vec4f(0.0, 0.0, 0.0, 1.0);
+
+        if (escaped) {
+            let zLenSq = zx.hi * zx.hi + zy.hi * zy.hi;
+            let zLen = sqrt(zLenSq);
+
+            // MODE 0: Scientific Smooth
+            if (u.mode == 0u) {
+                let log_zn = log(zLenSq) / 2.0;
+                let nu = log(log_zn / log(2.0)) / log(2.0);
+                let smoothIter = f32(iter) + 1.0 - nu;
+                
+                // Palette: Electric Blue to Gold
+                let hue = (smoothIter * 0.015) + 0.6;
+                let val = 0.5 + 0.5 * sin(smoothIter * 0.1);
+                color = vec4f(hsb2rgb(vec3f(hue, 0.8, val)), 1.0);
+            } 
+            // MODE 1: 3D Relief (Distance Estimation)
+            else {
+                // DE = 0.5 * |z| * log(|z|) / |z'|
+                let derLen = sqrt(derX * derX + derY * derY);
+                let de = 0.5 * zLen * log(zLen) / derLen;
+                
+                // Pseudo-Lighting
+                // Map distance to a "height" angle
+                let angle = atan(de * u.zoom_hi * 500.0); // Scale factor for visual contrast
+                let light = pow(sin(angle) * 0.5 + 0.5, 3.0) + 0.1;
+                
+                // Base color based on iteration to keep some structure
+                let baseHue = f32(iter) * 0.01;
+                let rgb = hsb2rgb(vec3f(baseHue, 0.4, light));
+                color = vec4f(rgb, 1.0);
+            }
+        } else {
+            // Inside set
+            if (u.mode == 1u) {
+                // Inner relief? just flat dark
+                color = vec4f(0.05, 0.05, 0.1, 1.0);
+            } else {
+                color = vec4f(0.0, 0.0, 0.0, 1.0);
+            }
+        }
+
+        textureStore(outTex, id.xy, color);
+    }
+</script>
+
+<!-- ========================================================================================== -->
+<!-- JAVASCRIPT LOGIC -->
+<!-- ========================================================================================== -->
+<script type="module">
+    // --- APP STATE ---
+    const state = {
+        centerX: -0.75, centerY: 0.0, // Start coords
+        zoom: 1.0,
+        targetX: -0.75, targetY: 0.0, targetZoom: 1.0,
+        maxIter: 500,
+        mode: 0, // 0=2D, 1=3D
+        width: 0, height: 0,
+        mouse: { x: 0, y: 0, down: false, lastX: 0, lastY: 0 },
+        isHovering: false
+    };
+
+    // DSFUN Helpers for CPU side
+    function splitDouble(v) {
+        const hi = Math.fround(v);
+        const lo = Math.fround(v - hi);
+        return { hi, lo };
+    }
+
+    // --- WEBGPU INIT ---
+    async function initWebGPU() {
+        const canvas = document.getElementById('gpuCanvas');
+        if (!navigator.gpu) return fail("WebGPU not supported.");
+        
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) return fail("No Adapter.");
+        
+        const device = await adapter.requestDevice();
+        const context = canvas.getContext('webgpu');
+        const format = navigator.gpu.getPreferredCanvasFormat();
+
+        // Shader
+        const code = document.getElementById('shader-code').textContent;
+        const module = device.createShaderModule({ code });
+
+        // Bindings
+        // Uniform Buffer: Res(2), Center(2*2), Zoom(2), Iter(1), Mode(1)
+        // Floats aligned to 4 bytes. 
+        // vec2f res (8), 4x f32 center (16), 2x f32 zoom (8), 1x u32 iter (4), 1x u32 mode(4) -> 40 bytes
+        // Round up to 16 byte align -> 48 bytes.
+        const uBufferSize = 48;
+        const uBuffer = device.createBuffer({ size: uBufferSize, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+
+        const pipeline = device.createComputePipeline({
+            layout: 'auto',
+            compute: { module, entryPoint: 'main' }
+        });
+
+        const bgLayout = pipeline.getBindGroupLayout(0);
+
+        return { device, context, format, pipeline, uBuffer, bgLayout, uBufferSize };
+    }
+
+    function fail(msg) {
+        document.getElementById('error').style.display = 'block';
+        document.getElementById('error').innerText = msg;
+        throw new Error(msg);
+    }
+
+    // --- THE MAIN LOOP ---
+    async function start() {
+        const gpu = await initWebGPU();
+        const uiCanvas = document.getElementById('uiCanvas');
+        const uiCtx = uiCanvas.getContext('2d');
+        const domCoords = document.getElementById('ui-coords');
+        
+        // Resize Handler
+        function resize() {
+            state.width = window.innerWidth;
+            state.height = window.innerHeight;
+            
+            // Resize GPU Canvas
+            document.getElementById('gpuCanvas').width = state.width;
+            document.getElementById('gpuCanvas').height = state.height;
+            gpu.context.configure({ device: gpu.device, format: gpu.format });
+
+            // Resize UI Canvas
+            uiCanvas.width = state.width;
+            uiCanvas.height = state.height;
+        }
+        window.onresize = resize;
+        resize();
+
+        // Inputs
+        const c = document.getElementById('uiCanvas'); // Capture events on top canvas
+        c.onmousedown = e => { state.mouse.down = true; state.mouse.lastX = e.clientX; state.mouse.lastY = e.clientY; };
+        window.onmouseup = () => { state.mouse.down = false; };
+        c.onmousemove = e => {
+            state.isHovering = true;
+            state.mouse.x = e.clientX;
+            state.mouse.y = e.clientY;
+            
+            if(state.mouse.down) {
+                const dx = e.clientX - state.mouse.lastX;
+                const dy = e.clientY - state.mouse.lastY;
+                state.mouse.lastX = e.clientX;
+                state.mouse.lastY = e.clientY;
+                
+                // Pan logic
+                const scale = 1.0 / state.zoom;
+                state.targetX -= (dx / state.height) * 2 * scale; // Y-based aspect fix
+                state.targetY += (dy / state.height) * 2 * scale;
+            }
+        };
+        c.onmouseout = () => { state.isHovering = false; };
+        
+        c.addEventListener('wheel', e => {
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.1 : 0.9;
+            state.targetZoom *= factor;
+            
+            // Adjust iter count based on depth (Adaptive)
+            state.maxIter = Math.min(2000, Math.floor(500 + Math.log10(state.targetZoom)*120));
+        }, { passive: false });
+
+        // --- RENDER FRAMES ---
+        let lastTime = 0;
+        let frameCount = 0;
+        let lastFps = 0;
+
+        function frame(time) {
+            // Physics / Interpolation
+            state.zoom += (state.targetZoom - state.zoom) * 0.15;
+            state.centerX += (state.targetX - state.centerX) * 0.15;
+            state.centerY += (state.targetY - state.centerY) * 0.15;
+
+            // Update UI Stats
+            if(time - lastFps > 1000) {
+                document.getElementById('ui-fps').innerText = frameCount;
+                frameCount = 0; lastFps = time;
+            }
+            frameCount++;
+            document.getElementById('ui-zoom').innerText = state.zoom.toExponential(2);
+            document.getElementById('ui-iter').innerText = state.maxIter;
+
+            // 1. GPU COMPUTE PASS
+            const cx = splitDouble(state.centerX);
+            const cy = splitDouble(state.centerY);
+            const z = splitDouble(state.zoom);
+
+            const uData = new DataView(new ArrayBuffer(gpu.uBufferSize));
+            uData.setFloat32(0, state.width, true);
+            uData.setFloat32(4, state.height, true);
+            uData.setFloat32(8, cx.hi, true);
+            uData.setFloat32(12, cx.lo, true);
+            uData.setFloat32(16, cy.hi, true);
+            uData.setFloat32(20, cy.lo, true);
+            uData.setFloat32(24, z.hi, true);
+            uData.setFloat32(28, z.lo, true);
+            uData.setUint32(32, state.maxIter, true);
+            uData.setUint32(36, state.mode, true);
+
+            gpu.device.queue.writeBuffer(gpu.uBuffer, 0, uData);
+
+            const texture = gpu.context.getCurrentTexture();
+            const view = texture.createView();
+            
+            const bindGroup = gpu.device.createBindGroup({
+                layout: gpu.bgLayout,
+                entries: [
+                    { binding: 0, resource: { buffer: gpu.uBuffer } },
+                    { binding: 1, resource: view }
+                ]
+            });
+
+            const commandEncoder = gpu.device.createCommandEncoder();
+            const pass = commandEncoder.beginComputePass();
+            pass.setPipeline(gpu.pipeline);
+            pass.setBindGroup(0, bindGroup);
+            pass.dispatchWorkgroups(Math.ceil(state.width / 8), Math.ceil(state.height / 8));
+            pass.end();
+            gpu.device.queue.submit([commandEncoder.finish()]);
+
+            // 2. UI & ORBIT TRACER (CPU CANVAS)
+            renderOverlay(uiCtx);
+
+            requestAnimationFrame(frame);
+        }
+
+        // --- ORBIT TRACER LOGIC ---
+        function renderOverlay(ctx) {
+            ctx.clearRect(0, 0, state.width, state.height);
+            
+            if (!state.isHovering) return;
+
+            // Calculate complex coord of mouse
+            // Mouse is 0..width, 0..height
+            const aspect = state.width / state.height;
+            const nx = (state.mouse.x / state.width - 0.5) * 2.0 * aspect;
+            const ny = (1.0 - state.mouse.y / state.height - 0.5) * 2.0; // Flip Y
+
+            // Coordinate C = Center + (PixelOffset / Zoom)
+            // Using standard JS Doubles (64-bit) which matches our shader emulation
+            const cRe = state.centerX + nx / state.zoom;
+            const cIm = state.centerY + ny / state.zoom;
+            
+            domCoords.innerText = `${cRe.toFixed(9)} ${cIm >= 0 ? '+' : ''}${cIm.toFixed(9)}i`;
+
+            // Draw Orbit
+            // Z = 0
+            let zx = 0, zy = 0;
+            const path = [];
+            let escaped = false;
+
+            // We simulate fewer iterations for the HUD to keep it snappy
+            const limit = Math.min(state.maxIter, 200); 
+
+            ctx.beginPath();
+            ctx.strokeStyle = "rgba(255, 255, 0, 0.6)";
+            ctx.lineWidth = 1;
+
+            // Starting point (0,0) in screen coords
+            // ScreenX = ( (Re - CenterRe) * Zoom / Aspect ) / 2 + 0.5 * Width
+            // Just reversing the transformation
+            
+            for (let i = 0; i < limit; i++) {
+                // z = z^2 + c
+                const xt = zx*zx - zy*zy + cRe;
+                const yt = 2*zx*zy + cIm;
+                zx = xt; zy = yt;
+
+                if (zx*zx + zy*zy > 4) { escaped = true; break; }
+
+                // Map back to screen
+                const sx = ((zx - state.centerX) * state.zoom / aspect / 2 + 0.5) * state.width;
+                const sy = (1.0 - ((zy - state.centerY) * state.zoom / 2 + 0.5)) * state.height;
+                
+                if (i===0) ctx.moveTo(sx, sy);
+                else ctx.lineTo(sx, sy);
+            }
+            ctx.stroke();
+
+            // Draw Crosshair
+            ctx.strokeStyle = "rgba(0, 255, 170, 0.5)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(state.mouse.x, 0); ctx.lineTo(state.mouse.x, state.height);
+            ctx.moveTo(0, state.mouse.y); ctx.lineTo(state.width, state.mouse.y);
+            ctx.stroke();
+
+            // Status Text near mouse
+            ctx.fillStyle = escaped ? "#ff5555" : "#55ff55";
+            ctx.font = "12px monospace";
+            ctx.fillText(escaped ? "ESCAPES" : "STABLE", state.mouse.x + 10, state.mouse.y - 10);
+        }
+
+        requestAnimationFrame(frame);
+    }
+
+    // --- UI HELPERS ---
+    window.jumpTo = (loc) => {
+        if (loc === 'home') {
+            state.targetX = -0.75; state.targetY = 0; state.targetZoom = 1.0;
+        } else if (loc === 'seahorse') {
+            state.targetX = -0.743643887; state.targetY = 0.131825904; state.targetZoom = 1e5;
+        } else if (loc === 'elephant') {
+            state.targetX = 0.3015; state.targetY = -0.0200; state.targetZoom = 1e3;
+        } else if (loc === 'minibrot') {
+             // A deep mini mandelbrot in the seahorse tail
+            state.targetX = -0.743643135; state.targetY = 0.131825963; state.targetZoom = 5e11;
+        }
+    };
+
+    document.getElementById('btn-2d').onclick = () => { 
+        state.mode = 0; 
+        document.getElementById('btn-2d').classList.add('active');
+        document.getElementById('btn-3d').classList.remove('active');
+    };
+    document.getElementById('btn-3d').onclick = () => { 
+        state.mode = 1; 
+        document.getElementById('btn-3d').classList.add('active');
+        document.getElementById('btn-2d').classList.remove('active');
+    };
+
+    // Go!
+    start().catch(console.error);
+
+</script>
+</body>
+</html>
+
